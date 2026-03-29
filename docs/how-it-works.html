@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How It Works — Cross-Chain Agent Swarm</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --purple: #a855f7; --purple-dim: #6d28d9; --cyan: #06b6d4; --cyan-dim: #0e7490;
+    --bg: #0a0a0f; --surface: #111118; --surface2: #1a1a24; --border: #2a2a3a;
+    --text: #e2e8f0; --text-dim: #94a3b8; --green: #22c55e; --amber: #f59e0b;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.6; overflow-x: hidden; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* ─── Header ─── */
+  header { text-align: center; padding: 48px 0 32px; }
+  header h1 { font-size: 2.4rem; background: linear-gradient(135deg, var(--purple), var(--cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
+  header p { color: var(--text-dim); font-size: 1.1rem; }
+
+  /* ─── Swarm Scene ─── */
+  .scene { position: relative; width: 100%; height: 320px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin: 32px 0; overflow: hidden; }
+  .scene::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 20% 50%, rgba(168,85,247,0.06) 0%, transparent 60%), radial-gradient(ellipse at 80% 50%, rgba(6,182,212,0.06) 0%, transparent 60%); }
+
+  .scene { height: 400px; }
+  .chain-box { position: absolute; width: 180px; padding: 16px; border-radius: 12px; text-align: center; z-index: 2; }
+  .chain-box.base { left: 40px; top: 50%; transform: translateY(-50%); background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.3); }
+  .chain-box.arb { right: 40px; top: 60px; background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.3); }
+  .chain-box.op { right: 40px; bottom: 60px; background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.3); }
+  .chain-box.op .chain-label { color: #ff6b6b; }
+  .chain-box.op .agent-icon { background: rgba(255,107,107,0.2); border: 2px solid #ff6b6b; }
+  .chain-box.op .mini-worker { background: rgba(255,107,107,0.15); border-color: #ff6b6b; }
+  .chain-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+  .chain-box.base .chain-label { color: var(--purple); }
+  .chain-box.arb .chain-label { color: var(--cyan); }
+  .agent-icon { width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+  .chain-box.base .agent-icon { background: rgba(168,85,247,0.2); border: 2px solid var(--purple); }
+  .chain-box.arb .agent-icon { background: rgba(6,182,212,0.2); border: 2px solid var(--cyan); }
+  .agent-name { font-weight: 600; font-size: 1rem; }
+  .agent-role { font-size: 0.8rem; color: var(--text-dim); }
+
+  .worker-pair { display: flex; gap: 12px; justify-content: center; margin-top: 8px; }
+  .mini-worker { width: 36px; height: 36px; border-radius: 50%; background: rgba(6,182,212,0.15); border: 1.5px solid var(--cyan); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+
+  /* Bridges */
+  .bridge { position: absolute; left: 230px; right: 230px; height: 2px; z-index: 1; }
+  .bridge.top { top: 120px; }
+  .bridge.bottom { bottom: 120px; }
+  .bridge-line { width: 100%; height: 100%; background: repeating-linear-gradient(90deg, var(--purple-dim) 0, var(--purple-dim) 8px, transparent 8px, transparent 14px); animation: bridgeScroll 1.5s linear infinite; opacity: 0.5; }
+  .bridge.bottom .bridge-line { background: repeating-linear-gradient(90deg, #b91c1c 0, #b91c1c 8px, transparent 8px, transparent 14px); }
+  .bridge-label { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; color: var(--text-dim); background: var(--surface); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); white-space: nowrap; }
+
+  @keyframes bridgeScroll { 0% { background-position: 0 0; } 100% { background-position: 28px 0; } }
+
+  /* Packets */
+  .packet { position: absolute; width: 14px; height: 8px; border-radius: 3px; top: 50%; z-index: 3; opacity: 0; }
+  /* Top path: Base → Arbitrum */
+  .packet.dispatch-arb { background: var(--purple); box-shadow: 0 0 8px var(--purple); animation: flyRightTop 3s ease-in-out infinite; }
+  .packet.result-arb { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: flyLeftTop 3.2s ease-in-out infinite; }
+  /* Bottom path: Base → Optimism */
+  .packet.dispatch-op { background: var(--purple); box-shadow: 0 0 8px var(--purple); animation: flyRightBot 3.4s ease-in-out infinite; }
+  .packet.result-op { background: #ff6b6b; box-shadow: 0 0 8px #ff6b6b; animation: flyLeftBot 3.6s ease-in-out infinite; }
+  .packet.d2 { animation-delay: 1.2s; }
+  .packet.r2 { animation-delay: 1.8s; }
+
+  @keyframes flyRightTop {
+    0% { left: 225px; top: 118px; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; }
+    100% { left: calc(100% - 225px); top: 118px; opacity: 0; }
+  }
+  @keyframes flyLeftTop {
+    0% { left: calc(100% - 225px); top: 122px; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; }
+    100% { left: 225px; top: 122px; opacity: 0; }
+  }
+  @keyframes flyRightBot {
+    0% { left: 225px; bottom: 118px; top: auto; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; }
+    100% { left: calc(100% - 225px); bottom: 118px; top: auto; opacity: 0; }
+  }
+  @keyframes flyLeftBot {
+    0% { left: calc(100% - 225px); bottom: 122px; top: auto; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; }
+    100% { left: 225px; bottom: 122px; top: auto; opacity: 0; }
+  }
+
+  /* ─── Play Button & Flow ─── */
+  .flow-section { margin: 48px 0; }
+  .flow-section h2 { text-align: center; font-size: 1.6rem; margin-bottom: 8px; }
+  .flow-section > p { text-align: center; color: var(--text-dim); margin-bottom: 24px; }
+
+  .play-btn { display: block; margin: 0 auto 32px; padding: 14px 40px; font-size: 1.1rem; font-weight: 600; color: #fff; background: linear-gradient(135deg, var(--purple-dim), var(--cyan-dim)); border: none; border-radius: 8px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+  .play-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(168,85,247,0.3); }
+  .play-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .flow-timeline { position: relative; padding-left: 40px; }
+  .flow-timeline::before { content: ''; position: absolute; left: 16px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+  .flow-step { position: relative; padding: 16px 20px; margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; opacity: 0.3; transition: all 0.5s ease; }
+  .flow-step.active { opacity: 1; border-color: var(--purple); box-shadow: 0 0 20px rgba(168,85,247,0.1); }
+  .flow-step.done { opacity: 0.7; border-color: var(--green); }
+  .flow-step::before { content: ''; position: absolute; left: -32px; top: 22px; width: 12px; height: 12px; border-radius: 50%; background: var(--border); border: 2px solid var(--bg); transition: background 0.3s; z-index: 1; }
+  .flow-step.active::before { background: var(--purple); box-shadow: 0 0 8px var(--purple); }
+  .flow-step.done::before { background: var(--green); }
+  .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .step-num { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; font-weight: 700; background: rgba(168,85,247,0.15); color: var(--purple); }
+  .step-title { font-weight: 600; }
+  .step-desc { color: var(--text-dim); font-size: 0.9rem; }
+  .step-visual { margin-top: 10px; padding: 10px; background: var(--bg); border-radius: 6px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.82rem; color: var(--cyan); overflow-x: auto; display: none; }
+  .flow-step.active .step-visual, .flow-step.done .step-visual { display: block; }
+
+  /* Loading spinner */
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--cyan-dim); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-left: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── Worker Registry ─── */
+  .registry { margin: 48px 0; }
+  .registry h2 { text-align: center; font-size: 1.6rem; margin-bottom: 24px; }
+  .worker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .worker-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; transition: border-color 0.3s; }
+  .worker-card:hover { border-color: var(--cyan); }
+  .worker-card .wc-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .worker-card .wc-avatar { width: 40px; height: 40px; border-radius: 50%; background: rgba(6,182,212,0.15); border: 1.5px solid var(--cyan); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+  .worker-card .wc-name { font-weight: 600; }
+  .worker-card .wc-chain { font-size: 0.75rem; color: var(--cyan); }
+  .wc-cap { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 0.8rem; background: rgba(168,85,247,0.12); color: var(--purple); margin-right: 6px; margin-bottom: 4px; }
+  .wc-status { margin-top: 10px; display: flex; align-items: center; gap: 6px; font-size: 0.8rem; }
+  .wc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+  .wc-dot.idle { background: var(--amber); }
+
+  /* ─── Task Lifecycle ─── */
+  .lifecycle { margin: 48px 0; }
+  .lifecycle h2 { text-align: center; font-size: 1.6rem; margin-bottom: 24px; }
+  .lc-track { display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap; }
+  .lc-step { text-align: center; padding: 16px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; min-width: 130px; transition: all 0.4s; cursor: pointer; }
+  .lc-step:hover, .lc-step.lit { border-color: var(--purple); background: rgba(168,85,247,0.06); }
+  .lc-step.lit .lc-icon { color: var(--purple); }
+  .lc-icon { font-size: 1.6rem; margin-bottom: 4px; }
+  .lc-name { font-weight: 600; font-size: 0.9rem; }
+  .lc-desc { font-size: 0.75rem; color: var(--text-dim); }
+  .lc-arrow { font-size: 1.4rem; color: var(--border); padding: 0 4px; }
+
+  /* ─── Architecture ─── */
+  .arch { margin: 48px 0 64px; }
+  .arch h2 { text-align: center; font-size: 1.6rem; margin-bottom: 24px; }
+  .contract-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+  .cc-header { padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
+  .cc-header:hover { background: var(--surface2); }
+  .cc-title { font-weight: 600; font-size: 1.05rem; }
+  .cc-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+  .cc-badge.oapp { background: rgba(168,85,247,0.15); color: var(--purple); }
+  .cc-badge.registry { background: rgba(6,182,212,0.15); color: var(--cyan); }
+  .cc-chevron { font-size: 1.2rem; color: var(--text-dim); transition: transform 0.3s; }
+  .contract-card.open .cc-chevron { transform: rotate(180deg); }
+  .cc-body { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+  .contract-card.open .cc-body { max-height: 600px; }
+  .cc-inner { padding: 0 20px 20px; }
+  .cc-desc { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 12px; }
+  .cc-section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 6px; margin-top: 12px; }
+  .cc-fn-list { list-style: none; }
+  .cc-fn-list li { padding: 4px 0; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.82rem; color: var(--cyan); }
+  .cc-fn-list li::before { content: 'fn '; color: var(--purple); font-weight: 600; }
+  .cc-event-list { list-style: none; }
+  .cc-event-list li { padding: 3px 0; font-family: monospace; font-size: 0.82rem; color: var(--amber); }
+  .cc-event-list li::before { content: 'event '; color: var(--text-dim); }
+
+  /* ─── Footer ─── */
+  footer { text-align: center; padding: 32px 0; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; }
+  footer a { color: var(--purple); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>How It Works</h1>
+    <p>Watch AI agents coordinate tasks across Base and Arbitrum via LayerZero V2.</p>
+  </header>
+
+  <!-- ════════ Animated Swarm Scene ════════ -->
+  <div class="scene">
+    <!-- Planner on Base (center-left) -->
+    <div class="chain-box base">
+      <div class="chain-label">Base Chain</div>
+      <div class="agent-icon">P</div>
+      <div class="agent-name">Planner</div>
+      <div class="agent-role">TaskManager.sol</div>
+    </div>
+
+    <!-- Bridge to Arbitrum (top) -->
+    <div class="bridge top">
+      <div class="bridge-line"></div>
+      <div class="bridge-label">LayerZero V2 → Arbitrum</div>
+    </div>
+
+    <!-- Bridge to Optimism (bottom) -->
+    <div class="bridge bottom">
+      <div class="bridge-line"></div>
+      <div class="bridge-label">LayerZero V2 → Optimism</div>
+    </div>
+
+    <!-- Packets: Base → Arbitrum (top path) -->
+    <div class="packet dispatch-arb"></div>
+    <div class="packet dispatch-arb d2"></div>
+    <div class="packet result-arb"></div>
+
+    <!-- Packets: Base → Optimism (bottom path) -->
+    <div class="packet dispatch-op"></div>
+    <div class="packet dispatch-op d2"></div>
+    <div class="packet result-op"></div>
+
+    <!-- Workers on Arbitrum (top-right) -->
+    <div class="chain-box arb">
+      <div class="chain-label">Arbitrum</div>
+      <div class="worker-pair">
+        <div class="mini-worker">W1</div>
+        <div class="mini-worker">W2</div>
+      </div>
+      <div class="agent-name" style="margin-top:6px">Data Workers</div>
+      <div class="agent-role">WorkerNode.sol</div>
+    </div>
+
+    <!-- Workers on Optimism (bottom-right) -->
+    <div class="chain-box op">
+      <div class="chain-label">Optimism</div>
+      <div class="worker-pair">
+        <div class="mini-worker">W3</div>
+        <div class="mini-worker">W4</div>
+      </div>
+      <div class="agent-name" style="margin-top:6px">Code Workers</div>
+      <div class="agent-role">WorkerNode.sol</div>
+    </div>
+  </div>
+
+  <!-- ════════ Animated Flow ════════ -->
+  <section class="flow-section">
+    <h2>Full Task Flow</h2>
+    <p>Press play to watch the entire lifecycle unfold.</p>
+    <button class="play-btn" id="playBtn" onclick="runFlow()">&#9654;&ensp;Play Full Flow</button>
+
+    <div class="flow-timeline" id="timeline">
+      <div class="flow-step" id="step0">
+        <div class="step-header"><span class="step-num">1</span><span class="step-title">Task Submitted</span></div>
+        <div class="step-desc">User submits "Analyze wallet 0xABC" with 0.01 ETH reward.</div>
+        <div class="step-visual">TaskManager.createTask("Analyze wallet 0xABC")<br>  &rarr; taskId: 0 &nbsp;|&nbsp; reward: 0.01 ETH &nbsp;|&nbsp; status: Created</div>
+      </div>
+      <div class="flow-step" id="step1">
+        <div class="step-header"><span class="step-num">2</span><span class="step-title">Planner Decomposes</span></div>
+        <div class="step-desc">Planner breaks task into two subtasks based on capabilities needed.</div>
+        <div class="step-visual">subtask[0]: "Count Base transactions" &rarr; needs: data-analysis<br>subtask[1]: "Review contract interactions" &rarr; needs: code-review</div>
+      </div>
+      <div class="flow-step" id="step2">
+        <div class="step-header"><span class="step-num">3</span><span class="step-title">Workers Discovered</span></div>
+        <div class="step-desc">WorkerRegistry queried for matching capability and chain location.</div>
+        <div class="step-visual">registry.findWorkers("data-analysis") &rarr; [Worker #1, Arbitrum]<br>registry.findWorkers("code-review") &rarr; [Worker #2, Arbitrum]</div>
+      </div>
+      <div class="flow-step" id="step3">
+        <div class="step-header"><span class="step-num">4</span><span class="step-title">Tasks Dispatched Cross-Chain</span></div>
+        <div class="step-desc">Subtasks sent to Workers on Arbitrum via LayerZero V2 _lzSend.</div>
+        <div class="step-visual">TaskManager._lzSend(dstEid: 40231, payload)<br>  &rarr; packet flies Base &xrarr; LayerZero &xrarr; Arbitrum<br>WorkerNode._lzReceive() stores task, emits TaskReceived</div>
+      </div>
+      <div class="flow-step" id="step4">
+        <div class="step-header"><span class="step-num">5</span><span class="step-title">Workers Execute</span></div>
+        <div class="step-desc">Each worker processes its subtask off-chain, then submits result hash on-chain.</div>
+        <div class="step-visual">Worker #1: "42 transactions found on Base for 0xABC"<span class="spinner"></span><br>Worker #2: "3 contract interactions: Uniswap, Aave, Lido"<span class="spinner"></span></div>
+      </div>
+      <div class="flow-step" id="step5">
+        <div class="step-header"><span class="step-num">6</span><span class="step-title">Results Return</span></div>
+        <div class="step-desc">Result hashes sent back to TaskManager on Base via LayerZero.</div>
+        <div class="step-visual">WorkerNode.submitResult(taskId, resultHash, srcEid: 30184)<br>  &rarr; packet flies Arbitrum &xrarr; LayerZero &xrarr; Base<br>TaskManager._lzReceive() &rarr; status: Completed</div>
+      </div>
+      <div class="flow-step" id="step6">
+        <div class="step-header"><span class="step-num">7</span><span class="step-title">Rewards Released</span></div>
+        <div class="step-desc">Task creator verifies results and releases ETH to workers.</div>
+        <div class="step-visual">TaskManager.releaseReward(0) &rarr; 0.005 ETH &rarr; Worker #1<br>TaskManager.releaseReward(1) &rarr; 0.005 ETH &rarr; Worker #2<br>  status: Paid &check;</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ Worker Registry ════════ -->
+  <section class="registry">
+    <h2>Worker Registry</h2>
+    <div class="worker-grid">
+      <div class="worker-card">
+        <div class="wc-header">
+          <div class="wc-avatar">W1</div>
+          <div>
+            <div class="wc-name">Worker #1</div>
+            <div class="wc-chain">Arbitrum (EID: 40231)</div>
+          </div>
+        </div>
+        <div><span class="wc-cap">data-analysis</span></div>
+        <div class="wc-status"><div class="wc-dot"></div> Active &mdash; high reputation</div>
+      </div>
+      <div class="worker-card">
+        <div class="wc-header">
+          <div class="wc-avatar">W2</div>
+          <div>
+            <div class="wc-name">Worker #2</div>
+            <div class="wc-chain">Arbitrum (EID: 40231)</div>
+          </div>
+        </div>
+        <div><span class="wc-cap">code-review</span></div>
+        <div class="wc-status"><div class="wc-dot idle"></div> Active &mdash; medium reputation</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ Task Lifecycle ════════ -->
+  <section class="lifecycle">
+    <h2>Task Lifecycle</h2>
+    <div class="lc-track" id="lcTrack">
+      <div class="lc-step lit" data-idx="0" onclick="highlightLC(0)">
+        <div class="lc-icon">&#x1F4DD;</div>
+        <div class="lc-name">Created</div>
+        <div class="lc-desc">Task + reward locked</div>
+      </div>
+      <div class="lc-arrow">&rarr;</div>
+      <div class="lc-step" data-idx="1" onclick="highlightLC(1)">
+        <div class="lc-icon">&#x1F680;</div>
+        <div class="lc-name">Dispatched</div>
+        <div class="lc-desc">Sent cross-chain to worker</div>
+      </div>
+      <div class="lc-arrow">&rarr;</div>
+      <div class="lc-step" data-idx="2" onclick="highlightLC(2)">
+        <div class="lc-icon">&#x2705;</div>
+        <div class="lc-name">Completed</div>
+        <div class="lc-desc">Result hash received</div>
+      </div>
+      <div class="lc-arrow">&rarr;</div>
+      <div class="lc-step" data-idx="3" onclick="highlightLC(3)">
+        <div class="lc-icon">&#x1F4B0;</div>
+        <div class="lc-name">Paid</div>
+        <div class="lc-desc">Reward released to worker</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ Architecture ════════ -->
+  <section class="arch">
+    <h2>Contract Architecture</h2>
+
+    <div class="contract-card" onclick="toggleCard(this)">
+      <div class="cc-header">
+        <div><span class="cc-title">TaskManager.sol</span>&ensp;<span class="cc-badge oapp">OApp</span></div>
+        <div class="cc-chevron">&#x25BC;</div>
+      </div>
+      <div class="cc-body"><div class="cc-inner">
+        <div class="cc-desc">Planner contract on Base. Creates tasks with ETH escrow, dispatches to workers cross-chain via LayerZero V2, receives result hashes, and releases rewards.</div>
+        <div class="cc-section-label">Functions</div>
+        <ul class="cc-fn-list">
+          <li>createTask(description) payable &rarr; taskId</li>
+          <li>dispatchTask(taskId, worker, dstEid, options) payable</li>
+          <li>releaseReward(taskId)</li>
+          <li>quoteDispatch(taskId, dstEid, worker, options) view</li>
+          <li>_lzReceive(origin, guid, message, ...) internal</li>
+        </ul>
+        <div class="cc-section-label">Events</div>
+        <ul class="cc-event-list">
+          <li>TaskCreated(taskId, description, reward)</li>
+          <li>TaskDispatched(taskId, dstEid, guid)</li>
+          <li>ResultReceived(taskId, resultHash, worker)</li>
+          <li>RewardReleased(taskId, worker, reward)</li>
+        </ul>
+        <div class="cc-section-label">State</div>
+        <ul class="cc-fn-list">
+          <li>tasks mapping &mdash; id, description, reward, creator, worker, resultHash, status, workerChainEid</li>
+          <li>nextTaskId counter</li>
+        </ul>
+      </div></div>
+    </div>
+
+    <div class="contract-card" onclick="toggleCard(this)">
+      <div class="cc-header">
+        <div><span class="cc-title">WorkerNode.sol</span>&ensp;<span class="cc-badge oapp">OApp</span></div>
+        <div class="cc-chevron">&#x25BC;</div>
+      </div>
+      <div class="cc-body"><div class="cc-inner">
+        <div class="cc-desc">Worker contract on Arbitrum. Receives dispatched tasks via LayerZero, stores them locally, and submits result hashes back cross-chain.</div>
+        <div class="cc-section-label">Functions</div>
+        <ul class="cc-fn-list">
+          <li>submitResult(taskId, resultHash, srcEid, options) payable</li>
+          <li>getTaskCount() view &rarr; uint256</li>
+          <li>_lzReceive(origin, guid, message, ...) internal</li>
+        </ul>
+        <div class="cc-section-label">Events</div>
+        <ul class="cc-event-list">
+          <li>TaskReceived(taskId, description, worker)</li>
+          <li>ResultSubmitted(taskId, resultHash)</li>
+        </ul>
+      </div></div>
+    </div>
+
+    <div class="contract-card" onclick="toggleCard(this)">
+      <div class="cc-header">
+        <div><span class="cc-title">WorkerRegistry.sol</span>&ensp;<span class="cc-badge registry">Registry</span></div>
+        <div class="cc-chevron">&#x25BC;</div>
+      </div>
+      <div class="cc-body"><div class="cc-inner">
+        <div class="cc-desc">On-chain directory of workers. Workers self-register with their capability string and chain EID. The Planner queries this to discover and select workers.</div>
+        <div class="cc-section-label">Functions</div>
+        <ul class="cc-fn-list">
+          <li>register(capability, chainEid)</li>
+          <li>deactivate()</li>
+          <li>getWorker(addr) view &rarr; Worker</li>
+          <li>getWorkerCount() view &rarr; uint256</li>
+          <li>findWorkers(capability) view &rarr; Worker[]</li>
+        </ul>
+        <div class="cc-section-label">Events</div>
+        <ul class="cc-event-list">
+          <li>WorkerRegistered(worker, capability, chainEid)</li>
+          <li>WorkerDeactivated(worker)</li>
+        </ul>
+      </div></div>
+    </div>
+  </section>
+
+  <footer>
+    Cross-Chain Agent Swarm &mdash; built for <a href="#">PL_Genesis</a> hackathon &mdash; AI/AGI and Robotics track<br>
+    <a href="architecture.html">Architecture</a> &middot; <a href="https://github.com">GitHub</a>
+  </footer>
+</div>
+
+<script>
+  /* ── Flow playback ── */
+  let flowRunning = false;
+  async function runFlow() {
+    if (flowRunning) return;
+    flowRunning = true;
+    const btn = document.getElementById('playBtn');
+    btn.disabled = true;
+    btn.textContent = 'Running...';
+    const steps = document.querySelectorAll('.flow-step');
+    steps.forEach(s => { s.classList.remove('active', 'done'); });
+
+    for (let i = 0; i < steps.length; i++) {
+      steps[i].classList.add('active');
+      steps[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Also light up lifecycle
+      if (i === 0) highlightLC(0);
+      if (i === 3) highlightLC(1);
+      if (i === 5) highlightLC(2);
+      if (i === 6) highlightLC(3);
+      await sleep(2200);
+      steps[i].classList.remove('active');
+      steps[i].classList.add('done');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '&#9654;&ensp;Replay';
+    flowRunning = false;
+  }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  /* ── Lifecycle click ── */
+  function highlightLC(idx) {
+    document.querySelectorAll('.lc-step').forEach((s, i) => {
+      s.classList.toggle('lit', i <= idx);
+    });
+  }
+
+  /* ── Contract cards ── */
+  function toggleCard(card) {
+    card.classList.toggle('open');
+  }
+</script>
+</body>
+</html>

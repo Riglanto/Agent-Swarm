@@ -1,0 +1,28 @@
+{
+  "name": "Cross-Chain Agent Swarm",
+  "description": "Multi-agent system coordinating tasks across chains via LayerZero V2",
+  "version": "1.0.0",
+  "operator": {
+    "wallet": "0x2e5fEA809Cc4679DdEc0c6cEB5F9f5B34Ce6263F"
+  },
+  "tools": [
+    "TaskManager.sol (OApp)",
+    "WorkerNode.sol (OApp)",
+    "WorkerRegistry.sol",
+    "LayerZero V2 Endpoint"
+  ],
+  "capabilities": {
+    "taskDecomposition": true,
+    "crossChainDispatch": true,
+    "workerSelection": true,
+    "rewardEscrow": true,
+    "multiAgentCoordination": true
+  },
+  "techStack": {
+    "language": "TypeScript + Solidity",
+    "framework": "Hardhat",
+    "crossChain": "LayerZero V2 OApp",
+    "harness": "claude-code",
+    "model": "claude-opus-4-6"
+  }
+}

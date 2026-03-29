@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — Cross-Chain Agent Swarm</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --purple: #a855f7; --purple-dim: #6d28d9; --cyan: #06b6d4; --cyan-dim: #0e7490;
+    --bg: #0a0a0f; --surface: #111118; --surface2: #1a1a24; --border: #2a2a3a;
+    --text: #e2e8f0; --text-dim: #94a3b8; --green: #22c55e; --amber: #f59e0b;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.6; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+  header { text-align: center; padding: 48px 0 16px; }
+  header h1 { font-size: 2.2rem; background: linear-gradient(135deg, var(--purple), var(--cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  header p { color: var(--text-dim); margin-top: 6px; }
+
+  /* ─── Diagram ─── */
+  .diagram { position: relative; margin: 40px 0; padding: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; }
+  .diagram pre { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.82rem; color: var(--text-dim); line-height: 1.7; overflow-x: auto; }
+  .diagram .hl-purple { color: var(--purple); font-weight: 600; }
+  .diagram .hl-cyan { color: var(--cyan); font-weight: 600; }
+  .diagram .hl-amber { color: var(--amber); }
+  .diagram .hl-green { color: var(--green); }
+
+  /* ─── Sections ─── */
+  section { margin: 40px 0; }
+  section > h2 { font-size: 1.5rem; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+  /* ─── Contract Detail ─── */
+  .contract { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+  .c-head { padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; }
+  .c-head:hover { background: var(--surface2); }
+  .c-name { font-size: 1.1rem; font-weight: 600; }
+  .c-tag { font-size: 0.7rem; padding: 3px 10px; border-radius: 5px; font-weight: 700; margin-left: 10px; }
+  .c-tag.base { background: rgba(168,85,247,0.14); color: var(--purple); }
+  .c-tag.arb { background: rgba(6,182,212,0.14); color: var(--cyan); }
+  .c-tag.any { background: rgba(245,158,11,0.14); color: var(--amber); }
+  .c-arrow { font-size: 1rem; color: var(--text-dim); transition: transform 0.3s; }
+  .contract.open .c-arrow { transform: rotate(180deg); }
+  .c-body { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+  .contract.open .c-body { max-height: 900px; }
+  .c-inner { padding: 0 22px 22px; }
+  .c-desc { color: var(--text-dim); font-size: 0.92rem; margin-bottom: 14px; }
+  .c-sub { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin: 14px 0 6px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  table th { text-align: left; padding: 8px 10px; background: var(--bg); color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
+  table td { padding: 8px 10px; border-top: 1px solid var(--border); }
+  table td:first-child { font-family: 'Cascadia Code', 'Fira Code', monospace; color: var(--cyan); font-size: 0.84rem; }
+  table td:nth-child(2) { color: var(--text-dim); }
+
+  .event-list { list-style: none; }
+  .event-list li { padding: 4px 0; font-family: monospace; font-size: 0.84rem; }
+  .event-list li span.ev { color: var(--amber); }
+  .event-list li span.args { color: var(--text-dim); }
+
+  .struct-block { background: var(--bg); border-radius: 8px; padding: 14px 16px; font-family: monospace; font-size: 0.82rem; line-height: 1.7; }
+  .struct-block .kw { color: var(--purple); }
+  .struct-block .ty { color: var(--cyan); }
+  .struct-block .nm { color: var(--text); }
+
+  /* ─── Message Flow ─── */
+  .msg-flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; align-items: center; margin: 24px 0; }
+  .mf-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
+  .mf-box.left { border-color: rgba(168,85,247,0.3); }
+  .mf-box.right { border-color: rgba(6,182,212,0.3); }
+  .mf-chain { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
+  .mf-box.left .mf-chain { color: var(--purple); }
+  .mf-box.right .mf-chain { color: var(--cyan); }
+  .mf-contract { font-weight: 600; }
+  .mf-arrows { text-align: center; padding: 0 12px; font-family: monospace; font-size: 0.8rem; line-height: 2.2; color: var(--text-dim); }
+  .mf-arrows .lbl { font-size: 0.65rem; color: var(--amber); display: block; }
+
+  /* ─── Footer ─── */
+  footer { text-align: center; padding: 32px 0; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; margin-top: 32px; }
+  footer a { color: var(--purple); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Contract Architecture</h1>
+    <p>Three contracts, two chains, one LayerZero bridge.</p>
+  </header>
+
+  <!-- ════════ ASCII Diagram ════════ -->
+  <div class="diagram">
+<pre>
+<span class="hl-purple">BASE CHAIN (EID 30184)</span>                     <span class="hl-amber">LayerZero V2</span>                  <span class="hl-cyan">ARBITRUM CHAIN (EID 40231)</span>
+ ┌──────────────────────┐               ┌───────────────┐          ┌───────────────────────┐
+ │  <span class="hl-purple">TaskManager (OApp)</span>  │──── dispatch ──│  <span class="hl-amber">LZ Endpoint</span>  │── recv ──▶│  <span class="hl-cyan">WorkerNode (OApp)</span>     │
+ │                      │               │               │          │                       │
+ │  createTask()        │◀── result ────│  _lzSend /    │◀─ send ──│  submitResult()       │
+ │  dispatchTask()      │               │  _lzReceive   │          │  _lzReceive()         │
+ │  releaseReward()     │               └───────────────┘          └───────────────────────┘
+ └──────────┬───────────┘                                          ┌───────────────────────┐
+            │ reads                                                 │  <span class="hl-green">WorkerRegistry</span>        │
+            │                                                      │                       │
+            └──────────────────────────────────────────────────────▶│  register()           │
+              <span class="hl-green">discover workers</span>                                       │  findWorkers()        │
+                                                                   └───────────────────────┘
+</pre>
+  </div>
+
+  <!-- ════════ Message Flow ════════ -->
+  <section>
+    <h2>Cross-Chain Message Flow</h2>
+    <div class="msg-flow">
+      <div class="mf-box left">
+        <div class="mf-chain">Base</div>
+        <div class="mf-contract">TaskManager</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);margin-top:4px;">dispatchTask()</div>
+      </div>
+      <div class="mf-arrows">
+        <span class="lbl">dispatch payload</span>
+        &#x2500;&#x2500; _lzSend &#x2500;&#x2500;&gt;<br>
+        &lt;&#x2500;&#x2500; _lzReceive &#x2500;&#x2500;
+        <span class="lbl">result payload</span>
+      </div>
+      <div class="mf-box right">
+        <div class="mf-chain">Arbitrum</div>
+        <div class="mf-contract">WorkerNode</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);margin-top:4px;">submitResult()</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+        <div style="font-weight:600;margin-bottom:8px;color:var(--purple);">Dispatch Payload</div>
+        <div style="font-family:monospace;font-size:0.82rem;color:var(--text-dim);">
+          abi.encode(<br>
+          &ensp;&ensp;taskId: <span style="color:var(--cyan)">uint256</span>,<br>
+          &ensp;&ensp;description: <span style="color:var(--cyan)">string</span>,<br>
+          &ensp;&ensp;reward: <span style="color:var(--cyan)">uint256</span>,<br>
+          &ensp;&ensp;worker: <span style="color:var(--cyan)">address</span><br>
+          )
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+        <div style="font-weight:600;margin-bottom:8px;color:var(--cyan);">Result Payload</div>
+        <div style="font-family:monospace;font-size:0.82rem;color:var(--text-dim);">
+          abi.encode(<br>
+          &ensp;&ensp;taskId: <span style="color:var(--cyan)">uint256</span>,<br>
+          &ensp;&ensp;resultHash: <span style="color:var(--cyan)">bytes32</span>,<br>
+          &ensp;&ensp;worker: <span style="color:var(--cyan)">address</span><br>
+          )
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ Contract Details ════════ -->
+  <section>
+    <h2>Contract Details</h2>
+
+    <!-- TaskManager -->
+    <div class="contract open" onclick="this.classList.toggle('open')">
+      <div class="c-head">
+        <div><span class="c-name">TaskManager.sol</span><span class="c-tag base">Base / OApp</span></div>
+        <span class="c-arrow">&#x25BC;</span>
+      </div>
+      <div class="c-body"><div class="c-inner">
+        <div class="c-desc">Planner agent contract. Inherits LayerZero OApp for cross-chain messaging. Holds ETH in escrow until task completion is verified, then releases reward to worker.</div>
+
+        <div class="c-sub">Data Structures</div>
+        <div class="struct-block">
+          <span class="kw">enum</span> <span class="nm">TaskStatus</span> { Created, Dispatched, Completed, Paid }<br><br>
+          <span class="kw">struct</span> <span class="nm">Task</span> {<br>
+          &ensp;&ensp;<span class="ty">uint256</span> <span class="nm">id</span>;<br>
+          &ensp;&ensp;<span class="ty">string</span> <span class="nm">description</span>;<br>
+          &ensp;&ensp;<span class="ty">uint256</span> <span class="nm">reward</span>;<br>
+          &ensp;&ensp;<span class="ty">address</span> <span class="nm">creator</span>;<br>
+          &ensp;&ensp;<span class="ty">address</span> <span class="nm">worker</span>;<br>
+          &ensp;&ensp;<span class="ty">bytes32</span> <span class="nm">resultHash</span>;<br>
+          &ensp;&ensp;<span class="ty">TaskStatus</span> <span class="nm">status</span>;<br>
+          &ensp;&ensp;<span class="ty">uint32</span> <span class="nm">workerChainEid</span>;<br>
+          }
+        </div>
+
+        <div class="c-sub">Functions</div>
+        <table>
+          <tr><th>Function</th><th>Description</th></tr>
+          <tr><td>createTask(description)</td><td>Creates task with msg.value ETH locked as reward. Returns taskId.</td></tr>
+          <tr><td>dispatchTask(taskId, worker, dstEid, options)</td><td>Sends task payload to WorkerNode on destination chain via _lzSend. Requires msg.value for LZ fee.</td></tr>
+          <tr><td>_lzReceive(...)</td><td>Internal callback: receives result hash and worker address from WorkerNode. Sets status to Completed.</td></tr>
+          <tr><td>releaseReward(taskId)</td><td>Transfers locked ETH to worker after task completed. Only callable by task creator.</td></tr>
+          <tr><td>quoteDispatch(...)</td><td>View function to estimate LayerZero messaging fee for dispatch.</td></tr>
+        </table>
+
+        <div class="c-sub">Events</div>
+        <ul class="event-list">
+          <li><span class="ev">TaskCreated</span><span class="args">(taskId, description, reward)</span></li>
+          <li><span class="ev">TaskDispatched</span><span class="args">(taskId, dstEid, guid)</span></li>
+          <li><span class="ev">ResultReceived</span><span class="args">(taskId, resultHash, worker)</span></li>
+          <li><span class="ev">RewardReleased</span><span class="args">(taskId, worker, reward)</span></li>
+        </ul>
+      </div></div>
+    </div>
+
+    <!-- WorkerNode -->
+    <div class="contract" onclick="this.classList.toggle('open')">
+      <div class="c-head">
+        <div><span class="c-name">WorkerNode.sol</span><span class="c-tag arb">Arbitrum / OApp</span></div>
+        <span class="c-arrow">&#x25BC;</span>
+      </div>
+      <div class="c-body"><div class="c-inner">
+        <div class="c-desc">Worker agent contract on the destination chain. Receives dispatched tasks via LayerZero, stores them, and provides submitResult() for workers to send results back.</div>
+
+        <div class="c-sub">Data Structures</div>
+        <div class="struct-block">
+          <span class="kw">struct</span> <span class="nm">ReceivedTask</span> {<br>
+          &ensp;&ensp;<span class="ty">uint256</span> <span class="nm">taskId</span>;<br>
+          &ensp;&ensp;<span class="ty">string</span> <span class="nm">description</span>;<br>
+          &ensp;&ensp;<span class="ty">uint256</span> <span class="nm">reward</span>;<br>
+          &ensp;&ensp;<span class="ty">address</span> <span class="nm">assignedWorker</span>;<br>
+          &ensp;&ensp;<span class="ty">bool</span> <span class="nm">completed</span>;<br>
+          }
+        </div>
+
+        <div class="c-sub">Functions</div>
+        <table>
+          <tr><th>Function</th><th>Description</th></tr>
+          <tr><td>_lzReceive(...)</td><td>Internal callback: decodes task payload from TaskManager and stores in receivedTasks mapping.</td></tr>
+          <tr><td>submitResult(taskId, resultHash, srcEid, options)</td><td>Worker submits result hash and sends it back to TaskManager via _lzSend. Requires msg.value for LZ fee.</td></tr>
+          <tr><td>getTaskCount()</td><td>Returns the number of tasks received by this node.</td></tr>
+        </table>
+
+        <div class="c-sub">Events</div>
+        <ul class="event-list">
+          <li><span class="ev">TaskReceived</span><span class="args">(taskId, description, worker)</span></li>
+          <li><span class="ev">ResultSubmitted</span><span class="args">(taskId, resultHash)</span></li>
+        </ul>
+      </div></div>
+    </div>
+
+    <!-- WorkerRegistry -->
+    <div class="contract" onclick="this.classList.toggle('open')">
+      <div class="c-head">
+        <div><span class="c-name">WorkerRegistry.sol</span><span class="c-tag any">Any Chain</span></div>
+        <span class="c-arrow">&#x25BC;</span>
+      </div>
+      <div class="c-body"><div class="c-inner">
+        <div class="c-desc">On-chain directory of available workers. Workers self-register with a capability string and their chain EID. The Planner agent queries this to discover and select the best workers for each subtask.</div>
+
+        <div class="c-sub">Data Structures</div>
+        <div class="struct-block">
+          <span class="kw">struct</span> <span class="nm">Worker</span> {<br>
+          &ensp;&ensp;<span class="ty">address</span> <span class="nm">addr</span>;<br>
+          &ensp;&ensp;<span class="ty">string</span> <span class="nm">capability</span>;<br>
+          &ensp;&ensp;<span class="ty">uint32</span> <span class="nm">chainEid</span>;<br>
+          &ensp;&ensp;<span class="ty">bool</span> <span class="nm">active</span>;<br>
+          }
+        </div>
+
+        <div class="c-sub">Functions</div>
+        <table>
+          <tr><th>Function</th><th>Description</th></tr>
+          <tr><td>register(capability, chainEid)</td><td>Worker self-registers with capability string and chain EID. Adds to workerList if new.</td></tr>
+          <tr><td>deactivate()</td><td>Worker sets themselves as inactive. They remain in the list but are excluded from queries.</td></tr>
+          <tr><td>getWorker(addr)</td><td>Returns Worker struct for a specific address.</td></tr>
+          <tr><td>getWorkerCount()</td><td>Returns total number of registered workers.</td></tr>
+          <tr><td>findWorkers(capability)</td><td>Returns all active workers matching a capability string.</td></tr>
+        </table>
+
+        <div class="c-sub">Events</div>
+        <ul class="event-list">
+          <li><span class="ev">WorkerRegistered</span><span class="args">(worker, capability, chainEid)</span></li>
+          <li><span class="ev">WorkerDeactivated</span><span class="args">(worker)</span></li>
+        </ul>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ════════ Tech Stack ════════ -->
+  <section>
+    <h2>Tech Stack</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;">
+        <div style="font-size:1.5rem;margin-bottom:4px;">&#x1F4E6;</div>
+        <div style="font-weight:600;">Hardhat</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);">Build & test framework</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;">
+        <div style="font-size:1.5rem;margin-bottom:4px;">&#x1F517;</div>
+        <div style="font-weight:600;">LayerZero V2</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);">OApp cross-chain messaging</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;">
+        <div style="font-size:1.5rem;margin-bottom:4px;">&#x1F6E1;</div>
+        <div style="font-weight:600;">OpenZeppelin</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);">Ownable, access control</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;">
+        <div style="font-size:1.5rem;margin-bottom:4px;">&#x1F916;</div>
+        <div style="font-weight:600;">Claude Opus 4.6</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);">AI agent harness</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Cross-Chain Agent Swarm &mdash; <a href="how-it-works.html">How It Works</a> &middot; <a href="https://github.com">GitHub</a>
+  </footer>
+
+</div>
+</body>
+</html>

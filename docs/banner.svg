@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a1a"/>
+      <stop offset="100%" style="stop-color:#12122a"/>
+    </linearGradient>
+    <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#a855f7"/>
+      <stop offset="40%" style="stop-color:#7c3aed"/>
+      <stop offset="70%" style="stop-color:#06b6d4"/>
+      <stop offset="100%" style="stop-color:#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="bridgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#a855f7;stop-opacity:0.6"/>
+      <stop offset="50%" style="stop-color:#06b6d4;stop-opacity:0.8"/>
+      <stop offset="100%" style="stop-color:#22d3ee;stop-opacity:0.6"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="nodeGlow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <style>
+    @keyframes packetRight {
+      0% { transform: translate(185px, 95px); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translate(555px, 95px); opacity: 0; }
+    }
+    @keyframes packetLeft {
+      0% { transform: translate(555px, 115px); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translate(185px, 115px); opacity: 0; }
+    }
+    @keyframes dashMove {
+      0% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: -30; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    @keyframes titleShimmer {
+      0% { opacity: 0.9; }
+      50% { opacity: 1; }
+      100% { opacity: 0.9; }
+    }
+    .packet-r { animation: packetRight 3s ease-in-out infinite; }
+    .packet-r2 { animation: packetRight 3s ease-in-out 1s infinite; }
+    .packet-r3 { animation: packetRight 3s ease-in-out 2s infinite; }
+    .packet-l { animation: packetLeft 3.5s ease-in-out 0.5s infinite; }
+    .packet-l2 { animation: packetLeft 3.5s ease-in-out 2s infinite; }
+    .bridge-line { animation: dashMove 1s linear infinite; }
+    .node-pulse { animation: pulse 2s ease-in-out infinite; }
+    .title-text { animation: titleShimmer 3s ease-in-out infinite; }
+  </style>
+
+  <!-- Background -->
+  <rect width="800" height="200" fill="url(#bg)" rx="12"/>
+
+  <!-- Grid pattern -->
+  <g opacity="0.05">
+    <line x1="0" y1="0" x2="0" y2="200" stroke="#a855f7" stroke-width="0.5" transform="translate(100,0)"/>
+    <line x1="0" y1="0" x2="0" y2="200" stroke="#a855f7" stroke-width="0.5" transform="translate(200,0)"/>
+    <line x1="0" y1="0" x2="0" y2="200" stroke="#a855f7" stroke-width="0.5" transform="translate(300,0)"/>
+    <line x1="0" y1="0" x2="0" y2="200" stroke="#06b6d4" stroke-width="0.5" transform="translate(500,0)"/>
+    <line x1="0" y1="0" x2="0" y2="200" stroke="#06b6d4" stroke-width="0.5" transform="translate(600,0)"/>
+    <line x1="0" y1="0" x2="0" y2="200" stroke="#06b6d4" stroke-width="0.5" transform="translate(700,0)"/>
+  </g>
+
+  <!-- Bridge dashed line -->
+  <line x1="185" y1="105" x2="555" y2="105" stroke="url(#bridgeGrad)" stroke-width="1.5" stroke-dasharray="8 6" class="bridge-line" opacity="0.5"/>
+
+  <!-- Task packets flying right (dispatch) -->
+  <g class="packet-r">
+    <rect x="-6" y="-4" width="12" height="8" rx="2" fill="#a855f7" filter="url(#glow)"/>
+  </g>
+  <g class="packet-r2">
+    <rect x="-6" y="-4" width="12" height="8" rx="2" fill="#8b5cf6" filter="url(#glow)"/>
+  </g>
+  <g class="packet-r3">
+    <rect x="-6" y="-4" width="12" height="8" rx="2" fill="#7c3aed" filter="url(#glow)"/>
+  </g>
+
+  <!-- Result packets flying left -->
+  <g class="packet-l">
+    <rect x="-6" y="-4" width="12" height="8" rx="2" fill="#06b6d4" filter="url(#glow)"/>
+  </g>
+  <g class="packet-l2">
+    <rect x="-6" y="-4" width="12" height="8" rx="2" fill="#22d3ee" filter="url(#glow)"/>
+  </g>
+
+  <!-- BASE Node (left) -->
+  <g transform="translate(115, 105)" filter="url(#nodeGlow)" class="node-pulse">
+    <circle r="38" fill="none" stroke="#a855f7" stroke-width="2" opacity="0.4"/>
+    <circle r="28" fill="#1a1040" stroke="#a855f7" stroke-width="1.5"/>
+    <text x="0" y="-3" text-anchor="middle" fill="#a855f7" font-family="monospace" font-size="11" font-weight="bold">BASE</text>
+    <text x="0" y="10" text-anchor="middle" fill="#c4b5fd" font-family="monospace" font-size="8">Planner</text>
+  </g>
+
+  <!-- ARBITRUM Node (right) -->
+  <g transform="translate(625, 105)" filter="url(#nodeGlow)" class="node-pulse">
+    <circle r="38" fill="none" stroke="#06b6d4" stroke-width="2" opacity="0.4"/>
+    <circle r="28" fill="#0a1a2a" stroke="#06b6d4" stroke-width="1.5"/>
+    <text x="0" y="-3" text-anchor="middle" fill="#06b6d4" font-family="monospace" font-size="10" font-weight="bold">ARBITRUM</text>
+    <text x="0" y="10" text-anchor="middle" fill="#67e8f9" font-family="monospace" font-size="8">Workers</text>
+  </g>
+
+  <!-- LayerZero label on bridge -->
+  <rect x="335" y="120" width="75" height="16" rx="3" fill="#1a1040" stroke="#6d28d9" stroke-width="0.5" opacity="0.8"/>
+  <text x="372" y="131" text-anchor="middle" fill="#a78bfa" font-family="monospace" font-size="8">LayerZero</text>
+
+  <!-- Title -->
+  <text x="400" y="38" text-anchor="middle" fill="url(#titleGrad)" font-family="'Segoe UI', system-ui, sans-serif" font-size="26" font-weight="bold" class="title-text">Cross-Chain Agent Swarm</text>
+
+  <!-- Tagline -->
+  <text x="400" y="178" text-anchor="middle" fill="#94a3b8" font-family="'Segoe UI', system-ui, sans-serif" font-size="12" font-style="italic">Multi-agent coordination across chains.</text>
+</svg>

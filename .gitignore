@@ -1,0 +1,16 @@
+node_modules/
+artifacts/
+cache/
+dist/
+typechain-types/
+coverage/
+coverage.json
+.env
+.env.*
+!.env.example
+.claude/
+.vscode/
+.idea/
+.DS_Store
+*.mov
+*.mp4
